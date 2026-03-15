@@ -1,632 +1,241 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rollout Viewer</title>
+    <title>smallfacecat - 个人主页</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #1a1a2e;
-            color: #eee;
-            height: 100vh;
-            overflow: hidden;
-        }
-        .container {
-            display: flex;
-            height: 100vh;
-        }
-
-        /* Sidebar */
-        .sidebar {
-            width: 320px;
-            background: #16213e;
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-            border-right: 1px solid #0f3460;
-        }
-        .sidebar-header {
-            padding: 20px;
-            background: #0f3460;
-        }
-        .sidebar-header h2 {
-            font-size: 18px;
-            margin-bottom: 16px;
-            color: #e94560;
-        }
-        .file-select {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #0f3460;
-            border-radius: 6px;
-            font-size: 14px;
-            background: #1a1a2e;
-            color: #eee;
-            cursor: pointer;
-        }
-        .file-select:focus {
-            outline: none;
-            border-color: #e94560;
-        }
-
-        /* Stats */
-        .stats-bar {
-            padding: 12px 20px;
-            background: #0f3460;
-            font-size: 13px;
-            color: #a0a0a0;
-            display: flex;
-            justify-content: space-between;
-        }
-        .stats-bar .highlight {
-            color: #4ecca3;
-            font-weight: 600;
-        }
-
-        /* Filter */
-        .filter-section {
-            padding: 12px 20px;
-            background: #16213e;
-            border-bottom: 1px solid #0f3460;
-            display: flex;
-            gap: 8px;
-        }
-        .filter-btn {
-            padding: 6px 14px;
-            border: 1px solid #0f3460;
-            border-radius: 20px;
-            background: transparent;
-            color: #a0a0a0;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.2s;
-        }
-        .filter-btn:hover {
-            border-color: #e94560;
-            color: #e94560;
-        }
-        .filter-btn.active {
-            background: #e94560;
-            border-color: #e94560;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
             color: #fff;
         }
 
-        /* Query List */
-        .query-list {
-            flex: 1;
-            overflow-y: auto;
-        }
-        .query-list::-webkit-scrollbar {
-            width: 6px;
-        }
-        .query-list::-webkit-scrollbar-track {
-            background: #16213e;
-        }
-        .query-list::-webkit-scrollbar-thumb {
-            background: #0f3460;
-            border-radius: 3px;
-        }
-        .query-item {
-            padding: 14px 20px;
-            border-bottom: 1px solid #0f3460;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .query-item:hover {
-            background: #1a1a2e;
-        }
-        .query-item.active {
-            background: #0f3460;
-            border-left: 3px solid #e94560;
-        }
-        .query-item .query-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        .query-item .query-id {
-            font-weight: 500;
-            font-size: 13px;
-            color: #eee;
-        }
-        .query-item .query-score {
-            font-size: 12px;
-            color: #4ecca3;
-            font-weight: 600;
-        }
-        .query-item .query-score.low {
-            color: #e94560;
-        }
-        .query-item .query-score.mid {
-            color: #f9ed69;
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 60px 20px;
         }
 
-        /* Rollout dots */
-        .rollout-dots {
-            display: flex;
-            gap: 6px;
-        }
-        .rollout-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #e94560;
-        }
-        .rollout-dot.correct {
-            background: #4ecca3;
-        }
-        .rollout-dot.empty {
-            background: #333;
-            opacity: 0.3;
-        }
-
-        /* Main content */
-        .main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            background: #1a1a2e;
-        }
-        .main-header {
-            padding: 20px 30px;
-            background: #16213e;
-            border-bottom: 1px solid #0f3460;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .main-header h1 {
-            font-size: 16px;
-            color: #eee;
-        }
-        .main-header .ground-truth {
-            font-size: 14px;
-            color: #4ecca3;
-        }
-        .main-header .ground-truth span {
-            color: #a0a0a0;
-        }
-
-        /* Content area */
-        .content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 24px 30px;
-        }
-        .content::-webkit-scrollbar {
-            width: 8px;
-        }
-        .content::-webkit-scrollbar-track {
-            background: #1a1a2e;
-        }
-        .content::-webkit-scrollbar-thumb {
-            background: #0f3460;
-            border-radius: 4px;
-        }
-
-        /* Prompt section */
-        .prompt-section {
-            background: #16213e;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 24px;
-        }
-        .section-title {
-            font-size: 12px;
-            font-weight: 600;
-            color: #e94560;
-            margin-bottom: 16px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .prompt-image {
-            max-width: 100%;
-            max-height: 350px;
-            border-radius: 8px;
-            margin-bottom: 16px;
-            display: block;
-        }
-        .prompt-text {
-            font-size: 14px;
-            line-height: 1.7;
-            color: #ccc;
-            white-space: pre-wrap;
-            background: #1a1a2e;
-            padding: 16px;
-            border-radius: 8px;
-        }
-
-        /* Rollouts grid */
-        .rollouts-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 20px;
-        }
-        .rollout-card {
-            background: #16213e;
-            border-radius: 12px;
-            padding: 20px;
-            border: 2px solid transparent;
-        }
-        .rollout-card.correct {
-            border-color: #4ecca3;
-        }
-        .rollout-card.wrong {
-            border-color: #e94560;
-        }
-        .rollout-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #0f3460;
-        }
-        .rollout-card-header .rollout-idx {
-            font-size: 14px;
-            font-weight: 600;
-            color: #eee;
-        }
-        .rollout-card-header .rollout-score {
-            font-size: 12px;
-            padding: 4px 12px;
+        .profile-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
             border-radius: 20px;
-            font-weight: 600;
-        }
-        .rollout-score.correct {
-            background: rgba(78, 204, 163, 0.2);
-            color: #4ecca3;
-        }
-        .rollout-score.wrong {
-            background: rgba(233, 69, 96, 0.2);
-            color: #e94560;
-        }
-        .rollout-response {
-            font-size: 13px;
-            line-height: 1.7;
-            color: #ccc;
-            white-space: pre-wrap;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        .rollout-response::-webkit-scrollbar {
-            width: 4px;
-        }
-        .rollout-response::-webkit-scrollbar-thumb {
-            background: #0f3460;
-            border-radius: 2px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        /* Empty state */
-        .empty-state {
+        .avatar {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0 auto 25px;
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 100%;
-            color: #666;
-            font-size: 16px;
+            font-size: 60px;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
         }
 
-        /* Search */
-        .search-box {
-            margin-top: 12px;
+        .name {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
-        .search-input {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #0f3460;
-            border-radius: 6px;
-            font-size: 13px;
-            background: #1a1a2e;
-            color: #eee;
+
+        .tagline {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 30px;
         }
-        .search-input:focus {
-            outline: none;
-            border-color: #e94560;
+
+        .bio {
+            font-size: 1rem;
+            line-height: 1.8;
+            color: #d0d0d0;
+            margin-bottom: 35px;
+            text-align: left;
         }
-        .search-input::placeholder {
-            color: #666;
+
+        .skills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 35px;
+        }
+
+        .skill-tag {
+            background: rgba(102, 126, 234, 0.2);
+            border: 1px solid rgba(102, 126, 234, 0.4);
+            padding: 8px 18px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .skill-tag:hover {
+            background: rgba(102, 126, 234, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .social-links {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .social-link {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            color: #fff;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .social-link:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-align: left;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #a0a0a0;
+            margin-top: 5px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #606060;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 600px) {
+            .name {
+                font-size: 1.8rem;
+            }
+            .stats {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            .profile-card {
+                padding: 25px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="sidebar">
-            <div class="sidebar-header">
-                <h2>Rollout Viewer</h2>
-                <select class="file-select" id="fileSelect">
-                    <option value="">-- Select a file --</option>
-                </select>
-                <div class="search-box">
-                    <input type="text" class="search-input" id="searchInput" placeholder="Search by ID...">
+        <div class="profile-card">
+            <div class="avatar">🐱</div>
+            <h1 class="name">smallfacecat</h1>
+            <p class="tagline">Developer / Creator / Dreamer</p>
+
+            <div class="bio">
+                <h3 class="section-title">About Me</h3>
+                <p>
+                    Hello! 我是 smallfacecat，一个热爱技术和创造的开发者。
+                    喜欢探索新技术，享受将想法变成现实的过程。
+                    在代码的世界里，每一行都是一次新的冒险。
+                </p>
+            </div>
+
+            <h3 class="section-title">Skills</h3>
+            <div class="skills">
+                <span class="skill-tag">Python</span>
+                <span class="skill-tag">JavaScript</span>
+                <span class="skill-tag">HTML/CSS</span>
+                <span class="skill-tag">Git</span>
+                <span class="skill-tag">Linux</span>
+            </div>
+
+            <h3 class="section-title">Connect</h3>
+            <div class="social-links">
+                <a href="https://github.com/smallfacecat" class="social-link" title="GitHub">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                    </svg>
+                </a>
+                <a href="mailto:your-email@example.com" class="social-link" title="Email">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                    </svg>
+                </a>
+                <a href="#" class="social-link" title="Blog">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                    </svg>
+                </a>
+            </div>
+
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-number">10+</div>
+                    <div class="stat-label">Projects</div>
                 </div>
-            </div>
-            <div class="stats-bar" id="statsBar">
-                <span>Queries: <span class="highlight">-</span></span>
-                <span>Acc: <span class="highlight">-</span></span>
-            </div>
-            <div class="filter-section">
-                <button class="filter-btn active" data-filter="all">All</button>
-                <button class="filter-btn" data-filter="correct">Correct</button>
-                <button class="filter-btn" data-filter="partial">Partial</button>
-                <button class="filter-btn" data-filter="wrong">Wrong</button>
-            </div>
-            <div class="query-list" id="queryList">
-                <div class="empty-state">Select a file</div>
-            </div>
-        </div>
-        <div class="main">
-            <div class="main-header">
-                <h1 id="currentQuery">No query selected</h1>
-                <div class="ground-truth" id="groundTruth"></div>
-            </div>
-            <div class="content" id="content">
-                <div class="empty-state">Select a query from the sidebar</div>
+                <div class="stat-item">
+                    <div class="stat-number">1000+</div>
+                    <div class="stat-label">Commits</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">∞</div>
+                    <div class="stat-label">Curiosity</div>
+                </div>
             </div>
         </div>
     </div>
 
-    <script>
-        let currentData = null;
-        let currentQueryIdx = null;
-        let currentFilter = 'all';
-        let searchText = '';
-        let queryGroups = {};
-        const MAX_DOTS = 8;
-
-        async function loadFileList() {
-            const res = await fetch('/api/files');
-            const files = await res.json();
-            const select = document.getElementById('fileSelect');
-            files.forEach(f => {
-                const opt = document.createElement('option');
-                opt.value = f;
-                opt.textContent = f.replace('_rollouts.json', '');
-                select.appendChild(opt);
-            });
-        }
-
-        async function loadFile(filename) {
-            if (!filename) return;
-            const res = await fetch('/' + filename);
-            currentData = await res.json();
-            processData();
-            renderQueryList();
-        }
-
-        function processData() {
-            queryGroups = {};
-            if (!currentData || !currentData.rollouts) return;
-
-            currentData.rollouts.forEach(r => {
-                const qIdx = r.query_idx;
-                if (!queryGroups[qIdx]) {
-                    queryGroups[qIdx] = [];
-                }
-                queryGroups[qIdx].push(r);
-            });
-
-            Object.values(queryGroups).forEach(arr => {
-                arr.sort((a, b) => a.rollout_idx - b.rollout_idx);
-            });
-
-            updateStats();
-        }
-
-        function updateStats() {
-            const statsBar = document.getElementById('statsBar');
-            const totalQueries = Object.keys(queryGroups).length;
-            let correctQueries = 0;
-            let totalRollouts = 0;
-            let correctRollouts = 0;
-
-            Object.values(queryGroups).forEach(rollouts => {
-                totalRollouts += rollouts.length;
-                const hasCorrect = rollouts.some(r => getScore(r) === 1);
-                if (hasCorrect) correctQueries++;
-                rollouts.forEach(r => {
-                    if (getScore(r) === 1) correctRollouts++;
-                });
-            });
-
-            const queryAcc = totalQueries > 0 ? (correctQueries / totalQueries * 100).toFixed(1) : 0;
-            const rolloutAcc = totalRollouts > 0 ? (correctRollouts / totalRollouts * 100).toFixed(1) : 0;
-
-            statsBar.innerHTML = `
-                <span>Queries: <span class="highlight">${totalQueries}</span></span>
-                <span>Pass@1: <span class="highlight">${rolloutAcc}%</span></span>
-                <span>Pass@N: <span class="highlight">${queryAcc}%</span></span>
-            `;
-        }
-
-        function getScore(rollout) {
-            if (rollout.verifier && rollout.verifier.length > 0) {
-                return rollout.verifier[0].score;
-            }
-            return null;
-        }
-
-        function getGroundTruth(rollout) {
-            if (rollout.verifier && rollout.verifier.length > 0) {
-                return rollout.verifier[0].ground_truth;
-            }
-            return 'N/A';
-        }
-
-        function getQueryStatus(rollouts) {
-            const correctCount = rollouts.filter(r => getScore(r) === 1).length;
-            const totalCount = rollouts.length;
-            if (correctCount === 0) return 'wrong';
-            if (correctCount === totalCount) return 'correct';
-            return 'partial';
-        }
-
-        function renderQueryList() {
-            const list = document.getElementById('queryList');
-            list.innerHTML = '';
-
-            const sortedQueryIdxs = Object.keys(queryGroups).map(Number).sort((a, b) => a - b);
-
-            sortedQueryIdxs.forEach(qIdx => {
-                const rollouts = queryGroups[qIdx];
-                const correctCount = rollouts.filter(r => getScore(r) === 1).length;
-                const totalCount = rollouts.length;
-                const status = getQueryStatus(rollouts);
-                const dataId = rollouts[0].data_id || `Query ${qIdx}`;
-
-                // Apply filter
-                if (currentFilter !== 'all' && status !== currentFilter) return;
-
-                // Apply search
-                if (searchText && !dataId.toLowerCase().includes(searchText.toLowerCase())) return;
-
-                const item = document.createElement('div');
-                item.className = 'query-item';
-                item.dataset.queryIdx = qIdx;
-
-                let scoreClass = '';
-                if (correctCount === 0) scoreClass = 'low';
-                else if (correctCount < totalCount) scoreClass = 'mid';
-
-                // Build dots
-                let dotsHtml = '';
-                for (let i = 0; i < MAX_DOTS; i++) {
-                    if (i < rollouts.length) {
-                        const dotClass = getScore(rollouts[i]) === 1 ? 'correct' : '';
-                        dotsHtml += `<div class="rollout-dot ${dotClass}"></div>`;
-                    } else {
-                        dotsHtml += `<div class="rollout-dot empty"></div>`;
-                    }
-                }
-
-                item.innerHTML = `
-                    <div class="query-header">
-                        <div class="query-id">${escapeHtml(dataId)}</div>
-                        <div class="query-score ${scoreClass}">${correctCount}/${totalCount}</div>
-                    </div>
-                    <div class="rollout-dots">${dotsHtml}</div>
-                `;
-
-                item.addEventListener('click', () => selectQuery(qIdx));
-                list.appendChild(item);
-            });
-
-            if (list.children.length === 0) {
-                list.innerHTML = '<div class="empty-state">No matching queries</div>';
-            }
-        }
-
-        function selectQuery(qIdx) {
-            currentQueryIdx = qIdx;
-
-            document.querySelectorAll('.query-item').forEach(el => {
-                el.classList.toggle('active', Number(el.dataset.queryIdx) === qIdx);
-            });
-
-            renderContent();
-        }
-
-        function renderContent() {
-            const content = document.getElementById('content');
-            const rollouts = queryGroups[currentQueryIdx] || [];
-
-            if (rollouts.length === 0) {
-                content.innerHTML = '<div class="empty-state">Select a query from the sidebar</div>';
-                return;
-            }
-
-            const firstRollout = rollouts[0];
-            document.getElementById('currentQuery').textContent = firstRollout.data_id || `Query ${currentQueryIdx}`;
-            document.getElementById('groundTruth').innerHTML = `<span>Ground Truth:</span> ${escapeHtml(getGroundTruth(firstRollout))}`;
-
-            // Get prompt
-            const promptData = currentData.entries_prompts[currentQueryIdx];
-            let promptHtml = '';
-
-            if (promptData && promptData.length > 0) {
-                const userMsg = promptData[0];
-                if (userMsg.content) {
-                    userMsg.content.forEach(c => {
-                        if (c.type === 'image_url' && c.image_url && c.image_url.url) {
-                            promptHtml += `<img class="prompt-image" src="${c.image_url.url}" onerror="this.style.display='none'" />`;
-                        } else if (c.type === 'text') {
-                            promptHtml += `<div class="prompt-text">${escapeHtml(c.text)}</div>`;
-                        }
-                    });
-                }
-            }
-
-            // Build rollout cards
-            let rolloutsHtml = rollouts.map(r => {
-                const score = getScore(r);
-                const scoreClass = score === 1 ? 'correct' : 'wrong';
-                const scoreText = score === 1 ? 'Correct' : 'Wrong';
-
-                return `
-                    <div class="rollout-card ${scoreClass}">
-                        <div class="rollout-card-header">
-                            <span class="rollout-idx">Rollout #${r.rollout_idx}</span>
-                            <span class="rollout-score ${scoreClass}">${scoreText}</span>
-                        </div>
-                        <div class="rollout-response">${escapeHtml(r.response || 'No response')}</div>
-                    </div>
-                `;
-            }).join('');
-
-            content.innerHTML = `
-                <div class="prompt-section">
-                    <div class="section-title">Prompt</div>
-                    ${promptHtml || '<div class="prompt-text">No prompt data</div>'}
-                </div>
-                <div class="section-title">Rollouts (${rollouts.length})</div>
-                <div class="rollouts-grid">
-                    ${rolloutsHtml}
-                </div>
-            `;
-        }
-
-        function escapeHtml(str) {
-            if (!str) return '';
-            return String(str)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
-        }
-
-        // Event listeners
-        document.getElementById('fileSelect').addEventListener('change', e => {
-            loadFile(e.target.value);
-            currentQueryIdx = null;
-            document.getElementById('content').innerHTML = '<div class="empty-state">Select a query from the sidebar</div>';
-            document.getElementById('currentQuery').textContent = 'No query selected';
-            document.getElementById('groundTruth').innerHTML = '';
-        });
-
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentFilter = btn.dataset.filter;
-                renderQueryList();
-            });
-        });
-
-        document.getElementById('searchInput').addEventListener('input', e => {
-            searchText = e.target.value;
-            renderQueryList();
-        });
-
-        // Init
-        loadFileList();
-    </script>
+    <footer>
+        &copy; 2026 smallfacecat. Built with passion.
+    </footer>
 </body>
 </html>
