@@ -1,11 +1,632 @@
 <!DOCTYPE html>
-  <html>
-  <head>
-      <title>我的主页</title>
-  </head>
-  <body>
-      <h1>欢迎来到我的 GitHub 主页</h1>
-      <p>这是我的个人网站。</p>
-  </body>
-  </html>
-  
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rollout Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 320px;
+            background: #16213e;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            border-right: 1px solid #0f3460;
+        }
+        .sidebar-header {
+            padding: 20px;
+            background: #0f3460;
+        }
+        .sidebar-header h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #e94560;
+        }
+        .file-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #0f3460;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #1a1a2e;
+            color: #eee;
+            cursor: pointer;
+        }
+        .file-select:focus {
+            outline: none;
+            border-color: #e94560;
+        }
+
+        /* Stats */
+        .stats-bar {
+            padding: 12px 20px;
+            background: #0f3460;
+            font-size: 13px;
+            color: #a0a0a0;
+            display: flex;
+            justify-content: space-between;
+        }
+        .stats-bar .highlight {
+            color: #4ecca3;
+            font-weight: 600;
+        }
+
+        /* Filter */
+        .filter-section {
+            padding: 12px 20px;
+            background: #16213e;
+            border-bottom: 1px solid #0f3460;
+            display: flex;
+            gap: 8px;
+        }
+        .filter-btn {
+            padding: 6px 14px;
+            border: 1px solid #0f3460;
+            border-radius: 20px;
+            background: transparent;
+            color: #a0a0a0;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .filter-btn:hover {
+            border-color: #e94560;
+            color: #e94560;
+        }
+        .filter-btn.active {
+            background: #e94560;
+            border-color: #e94560;
+            color: #fff;
+        }
+
+        /* Query List */
+        .query-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .query-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .query-list::-webkit-scrollbar-track {
+            background: #16213e;
+        }
+        .query-list::-webkit-scrollbar-thumb {
+            background: #0f3460;
+            border-radius: 3px;
+        }
+        .query-item {
+            padding: 14px 20px;
+            border-bottom: 1px solid #0f3460;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .query-item:hover {
+            background: #1a1a2e;
+        }
+        .query-item.active {
+            background: #0f3460;
+            border-left: 3px solid #e94560;
+        }
+        .query-item .query-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .query-item .query-id {
+            font-weight: 500;
+            font-size: 13px;
+            color: #eee;
+        }
+        .query-item .query-score {
+            font-size: 12px;
+            color: #4ecca3;
+            font-weight: 600;
+        }
+        .query-item .query-score.low {
+            color: #e94560;
+        }
+        .query-item .query-score.mid {
+            color: #f9ed69;
+        }
+
+        /* Rollout dots */
+        .rollout-dots {
+            display: flex;
+            gap: 6px;
+        }
+        .rollout-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #e94560;
+        }
+        .rollout-dot.correct {
+            background: #4ecca3;
+        }
+        .rollout-dot.empty {
+            background: #333;
+            opacity: 0.3;
+        }
+
+        /* Main content */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #1a1a2e;
+        }
+        .main-header {
+            padding: 20px 30px;
+            background: #16213e;
+            border-bottom: 1px solid #0f3460;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .main-header h1 {
+            font-size: 16px;
+            color: #eee;
+        }
+        .main-header .ground-truth {
+            font-size: 14px;
+            color: #4ecca3;
+        }
+        .main-header .ground-truth span {
+            color: #a0a0a0;
+        }
+
+        /* Content area */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 30px;
+        }
+        .content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .content::-webkit-scrollbar-track {
+            background: #1a1a2e;
+        }
+        .content::-webkit-scrollbar-thumb {
+            background: #0f3460;
+            border-radius: 4px;
+        }
+
+        /* Prompt section */
+        .prompt-section {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #e94560;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .prompt-image {
+            max-width: 100%;
+            max-height: 350px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: block;
+        }
+        .prompt-text {
+            font-size: 14px;
+            line-height: 1.7;
+            color: #ccc;
+            white-space: pre-wrap;
+            background: #1a1a2e;
+            padding: 16px;
+            border-radius: 8px;
+        }
+
+        /* Rollouts grid */
+        .rollouts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        .rollout-card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid transparent;
+        }
+        .rollout-card.correct {
+            border-color: #4ecca3;
+        }
+        .rollout-card.wrong {
+            border-color: #e94560;
+        }
+        .rollout-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #0f3460;
+        }
+        .rollout-card-header .rollout-idx {
+            font-size: 14px;
+            font-weight: 600;
+            color: #eee;
+        }
+        .rollout-card-header .rollout-score {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+        .rollout-score.correct {
+            background: rgba(78, 204, 163, 0.2);
+            color: #4ecca3;
+        }
+        .rollout-score.wrong {
+            background: rgba(233, 69, 96, 0.2);
+            color: #e94560;
+        }
+        .rollout-response {
+            font-size: 13px;
+            line-height: 1.7;
+            color: #ccc;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .rollout-response::-webkit-scrollbar {
+            width: 4px;
+        }
+        .rollout-response::-webkit-scrollbar-thumb {
+            background: #0f3460;
+            border-radius: 2px;
+        }
+
+        /* Empty state */
+        .empty-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #666;
+            font-size: 16px;
+        }
+
+        /* Search */
+        .search-box {
+            margin-top: 12px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #0f3460;
+            border-radius: 6px;
+            font-size: 13px;
+            background: #1a1a2e;
+            color: #eee;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: #e94560;
+        }
+        .search-input::placeholder {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>Rollout Viewer</h2>
+                <select class="file-select" id="fileSelect">
+                    <option value="">-- Select a file --</option>
+                </select>
+                <div class="search-box">
+                    <input type="text" class="search-input" id="searchInput" placeholder="Search by ID...">
+                </div>
+            </div>
+            <div class="stats-bar" id="statsBar">
+                <span>Queries: <span class="highlight">-</span></span>
+                <span>Acc: <span class="highlight">-</span></span>
+            </div>
+            <div class="filter-section">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="correct">Correct</button>
+                <button class="filter-btn" data-filter="partial">Partial</button>
+                <button class="filter-btn" data-filter="wrong">Wrong</button>
+            </div>
+            <div class="query-list" id="queryList">
+                <div class="empty-state">Select a file</div>
+            </div>
+        </div>
+        <div class="main">
+            <div class="main-header">
+                <h1 id="currentQuery">No query selected</h1>
+                <div class="ground-truth" id="groundTruth"></div>
+            </div>
+            <div class="content" id="content">
+                <div class="empty-state">Select a query from the sidebar</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentData = null;
+        let currentQueryIdx = null;
+        let currentFilter = 'all';
+        let searchText = '';
+        let queryGroups = {};
+        const MAX_DOTS = 8;
+
+        async function loadFileList() {
+            const res = await fetch('/api/files');
+            const files = await res.json();
+            const select = document.getElementById('fileSelect');
+            files.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f;
+                opt.textContent = f.replace('_rollouts.json', '');
+                select.appendChild(opt);
+            });
+        }
+
+        async function loadFile(filename) {
+            if (!filename) return;
+            const res = await fetch('/' + filename);
+            currentData = await res.json();
+            processData();
+            renderQueryList();
+        }
+
+        function processData() {
+            queryGroups = {};
+            if (!currentData || !currentData.rollouts) return;
+
+            currentData.rollouts.forEach(r => {
+                const qIdx = r.query_idx;
+                if (!queryGroups[qIdx]) {
+                    queryGroups[qIdx] = [];
+                }
+                queryGroups[qIdx].push(r);
+            });
+
+            Object.values(queryGroups).forEach(arr => {
+                arr.sort((a, b) => a.rollout_idx - b.rollout_idx);
+            });
+
+            updateStats();
+        }
+
+        function updateStats() {
+            const statsBar = document.getElementById('statsBar');
+            const totalQueries = Object.keys(queryGroups).length;
+            let correctQueries = 0;
+            let totalRollouts = 0;
+            let correctRollouts = 0;
+
+            Object.values(queryGroups).forEach(rollouts => {
+                totalRollouts += rollouts.length;
+                const hasCorrect = rollouts.some(r => getScore(r) === 1);
+                if (hasCorrect) correctQueries++;
+                rollouts.forEach(r => {
+                    if (getScore(r) === 1) correctRollouts++;
+                });
+            });
+
+            const queryAcc = totalQueries > 0 ? (correctQueries / totalQueries * 100).toFixed(1) : 0;
+            const rolloutAcc = totalRollouts > 0 ? (correctRollouts / totalRollouts * 100).toFixed(1) : 0;
+
+            statsBar.innerHTML = `
+                <span>Queries: <span class="highlight">${totalQueries}</span></span>
+                <span>Pass@1: <span class="highlight">${rolloutAcc}%</span></span>
+                <span>Pass@N: <span class="highlight">${queryAcc}%</span></span>
+            `;
+        }
+
+        function getScore(rollout) {
+            if (rollout.verifier && rollout.verifier.length > 0) {
+                return rollout.verifier[0].score;
+            }
+            return null;
+        }
+
+        function getGroundTruth(rollout) {
+            if (rollout.verifier && rollout.verifier.length > 0) {
+                return rollout.verifier[0].ground_truth;
+            }
+            return 'N/A';
+        }
+
+        function getQueryStatus(rollouts) {
+            const correctCount = rollouts.filter(r => getScore(r) === 1).length;
+            const totalCount = rollouts.length;
+            if (correctCount === 0) return 'wrong';
+            if (correctCount === totalCount) return 'correct';
+            return 'partial';
+        }
+
+        function renderQueryList() {
+            const list = document.getElementById('queryList');
+            list.innerHTML = '';
+
+            const sortedQueryIdxs = Object.keys(queryGroups).map(Number).sort((a, b) => a - b);
+
+            sortedQueryIdxs.forEach(qIdx => {
+                const rollouts = queryGroups[qIdx];
+                const correctCount = rollouts.filter(r => getScore(r) === 1).length;
+                const totalCount = rollouts.length;
+                const status = getQueryStatus(rollouts);
+                const dataId = rollouts[0].data_id || `Query ${qIdx}`;
+
+                // Apply filter
+                if (currentFilter !== 'all' && status !== currentFilter) return;
+
+                // Apply search
+                if (searchText && !dataId.toLowerCase().includes(searchText.toLowerCase())) return;
+
+                const item = document.createElement('div');
+                item.className = 'query-item';
+                item.dataset.queryIdx = qIdx;
+
+                let scoreClass = '';
+                if (correctCount === 0) scoreClass = 'low';
+                else if (correctCount < totalCount) scoreClass = 'mid';
+
+                // Build dots
+                let dotsHtml = '';
+                for (let i = 0; i < MAX_DOTS; i++) {
+                    if (i < rollouts.length) {
+                        const dotClass = getScore(rollouts[i]) === 1 ? 'correct' : '';
+                        dotsHtml += `<div class="rollout-dot ${dotClass}"></div>`;
+                    } else {
+                        dotsHtml += `<div class="rollout-dot empty"></div>`;
+                    }
+                }
+
+                item.innerHTML = `
+                    <div class="query-header">
+                        <div class="query-id">${escapeHtml(dataId)}</div>
+                        <div class="query-score ${scoreClass}">${correctCount}/${totalCount}</div>
+                    </div>
+                    <div class="rollout-dots">${dotsHtml}</div>
+                `;
+
+                item.addEventListener('click', () => selectQuery(qIdx));
+                list.appendChild(item);
+            });
+
+            if (list.children.length === 0) {
+                list.innerHTML = '<div class="empty-state">No matching queries</div>';
+            }
+        }
+
+        function selectQuery(qIdx) {
+            currentQueryIdx = qIdx;
+
+            document.querySelectorAll('.query-item').forEach(el => {
+                el.classList.toggle('active', Number(el.dataset.queryIdx) === qIdx);
+            });
+
+            renderContent();
+        }
+
+        function renderContent() {
+            const content = document.getElementById('content');
+            const rollouts = queryGroups[currentQueryIdx] || [];
+
+            if (rollouts.length === 0) {
+                content.innerHTML = '<div class="empty-state">Select a query from the sidebar</div>';
+                return;
+            }
+
+            const firstRollout = rollouts[0];
+            document.getElementById('currentQuery').textContent = firstRollout.data_id || `Query ${currentQueryIdx}`;
+            document.getElementById('groundTruth').innerHTML = `<span>Ground Truth:</span> ${escapeHtml(getGroundTruth(firstRollout))}`;
+
+            // Get prompt
+            const promptData = currentData.entries_prompts[currentQueryIdx];
+            let promptHtml = '';
+
+            if (promptData && promptData.length > 0) {
+                const userMsg = promptData[0];
+                if (userMsg.content) {
+                    userMsg.content.forEach(c => {
+                        if (c.type === 'image_url' && c.image_url && c.image_url.url) {
+                            promptHtml += `<img class="prompt-image" src="${c.image_url.url}" onerror="this.style.display='none'" />`;
+                        } else if (c.type === 'text') {
+                            promptHtml += `<div class="prompt-text">${escapeHtml(c.text)}</div>`;
+                        }
+                    });
+                }
+            }
+
+            // Build rollout cards
+            let rolloutsHtml = rollouts.map(r => {
+                const score = getScore(r);
+                const scoreClass = score === 1 ? 'correct' : 'wrong';
+                const scoreText = score === 1 ? 'Correct' : 'Wrong';
+
+                return `
+                    <div class="rollout-card ${scoreClass}">
+                        <div class="rollout-card-header">
+                            <span class="rollout-idx">Rollout #${r.rollout_idx}</span>
+                            <span class="rollout-score ${scoreClass}">${scoreText}</span>
+                        </div>
+                        <div class="rollout-response">${escapeHtml(r.response || 'No response')}</div>
+                    </div>
+                `;
+            }).join('');
+
+            content.innerHTML = `
+                <div class="prompt-section">
+                    <div class="section-title">Prompt</div>
+                    ${promptHtml || '<div class="prompt-text">No prompt data</div>'}
+                </div>
+                <div class="section-title">Rollouts (${rollouts.length})</div>
+                <div class="rollouts-grid">
+                    ${rolloutsHtml}
+                </div>
+            `;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        // Event listeners
+        document.getElementById('fileSelect').addEventListener('change', e => {
+            loadFile(e.target.value);
+            currentQueryIdx = null;
+            document.getElementById('content').innerHTML = '<div class="empty-state">Select a query from the sidebar</div>';
+            document.getElementById('currentQuery').textContent = 'No query selected';
+            document.getElementById('groundTruth').innerHTML = '';
+        });
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                renderQueryList();
+            });
+        });
+
+        document.getElementById('searchInput').addEventListener('input', e => {
+            searchText = e.target.value;
+            renderQueryList();
+        });
+
+        // Init
+        loadFileList();
+    </script>
+</body>
+</html>
